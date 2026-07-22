@@ -1,0 +1,26 @@
+{
+  "expo": {
+    "name": "Unö",
+    "slug": "uno-app",
+    "scheme": "uno",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "backgroundColor": "#0B3D2E"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "ng.uno.app"
+    },
+    "android": {
+      "package": "ng.uno.app"
+    },
+    "extra": {
+      "//": "API base URL. Override per-device via the EXPO_PUBLIC_API_URL env var (see README). This 'extra' value is the fallback the app reads when that env var is unset.",
+      "apiUrl": "http://localhost:3000/api/v1"
+    }
+  }
+}

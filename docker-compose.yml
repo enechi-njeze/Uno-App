@@ -1,0 +1,25 @@
+# Local development database for Unö.
+# PostGIS is included now so geospatial work in later steps (map + landmark
+# search) needs no migration of the container. Phase 1 skeleton only uses
+# plain tables; the postgis extension is enabled but not yet required.
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    container_name: uno-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: uno
+      POSTGRES_PASSWORD: uno
+      POSTGRES_DB: uno
+    ports:
+      - "5432:5432"
+    volumes:
+      - uno-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U uno -d uno"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  uno-pgdata:

@@ -1,0 +1,14 @@
+{
+  "name": "uno-app",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Unö — trust-centric real estate platform for Nigeria (Phase 1 Trust MVP)",
+  "scripts": {
+    "api": "npm --prefix apps/api run start:dev",
+    "api:build": "npm --prefix apps/api run build",
+    "mobile": "npm --prefix apps/mobile run start",
+    "install:all": "npm --prefix apps/api install && npm --prefix apps/mobile install",
+    "db:up": "docker compose up -d db",
+    "db:down": "docker compose down"
+  }
+}

@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+
+# Env / secrets
+.env
+.env.local
+*.local
+
+# Builds
+dist/
+build/
+web-build/
+apps/mobile/.expo/
+apps/mobile/dist/
+
+# Logs
+*.log
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# Native
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Local Postgres data (dev)
+pgdata/
