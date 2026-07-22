@@ -36,6 +36,18 @@ Build order is one module at a time; see `docs/Uno-Build-Brief.md`.
 **Explicitly NOT in Phase 1:** escrow, contracts/e-sign, 3D scanning,
 multi-currency, valuation model, property management.
 
+## Planned features (noted, NOT yet built — do not build ahead)
+
+- **AI chat concierge** (proposed, post-Phase-1-spine). An assistant that
+  answers listing questions, general Nigerian real-estate questions, and
+  "evaluate Unö" questions, then hands off to a live agent. Layers on top of
+  Step 6 (Chat) or as its own Concierge/Support module, and should answer
+  *from* verified listing/trust data. **Guardrails are non-negotiable given the
+  trust brand:** no legal advice; never overstate what a verification tier
+  guarantees (under-claim, per the tier scope rules); always offer/defer to a
+  human for anything binding; cite the source (the listing's own Trust Panel /
+  fee ledger) rather than inventing. To be specced properly before any build.
+
 ## Layout
 
 ```
