@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1200" viewBox="0 0 1200 1200">
+  <rect width="1200" height="1200" rx="260" fill="#FFFFFF"/>
+  <text x="600" y="720" text-anchor="middle" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="300" font-weight="800" fill="#0B3D2E">Uno</text>
+  <circle cx="797" cy="510" r="27" fill="#D7263D"/>
+  <circle cx="859" cy="510" r="27" fill="#D7263D"/>
+</svg>
