@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -7,13 +7,14 @@ import {
   StyleSheet,
   Switch,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { api } from '../api/client';
-import type { ListingCard as Card } from '../types';
+import type { GazetteerSuggestion, ListingCard as Card } from '../types';
 import { ListingCard } from '../components/ListingCard';
 import { useNav } from '../navigation';
-import { colors } from '../theme';
+import { colors, radius } from '../theme';
 
 type ConnState = 'checking' | 'online' | 'offline';
 
@@ -25,12 +26,24 @@ export function BrowseScreen() {
   const [error, setError] = useState<string | null>(null);
   const [verifiedOnly, setVerifiedOnly] = useState(false);
 
+  // Landmark search state.
+  const [query, setQuery] = useState('');
+  const [suggestions, setSuggestions] = useState<GazetteerSuggestion[]>([]);
+  const [selected, setSelected] = useState<GazetteerSuggestion | null>(null);
+  const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const load = useCallback(async () => {
     setError(null);
     try {
       const health = await api.health();
       setConn(health.db === 'up' ? 'online' : 'offline');
-      const data = await api.listings({ verifiedOnly });
+      const data = selected
+        ? await api.searchListings({
+            gazetteerId: selected.id,
+            verifiedOnly,
+            radiusM: 20000,
+          })
+        : await api.listings({ verifiedOnly });
       setListings(data);
     } catch (e) {
       setConn('offline');
@@ -38,11 +51,41 @@ export function BrowseScreen() {
     } finally {
       setLoading(false);
     }
-  }, [verifiedOnly]);
+  }, [verifiedOnly, selected]);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  // Typo-tolerant autocomplete, debounced.
+  const onQueryChange = (text: string) => {
+    setQuery(text);
+    if (selected) setSelected(null);
+    if (debounce.current) clearTimeout(debounce.current);
+    if (text.trim().length < 2) {
+      setSuggestions([]);
+      return;
+    }
+    debounce.current = setTimeout(async () => {
+      try {
+        setSuggestions(await api.searchLandmarks(text.trim()));
+      } catch {
+        setSuggestions([]);
+      }
+    }, 200);
+  };
+
+  const pickSuggestion = (s: GazetteerSuggestion) => {
+    setSelected(s);
+    setQuery(s.name);
+    setSuggestions([]);
+  };
+
+  const clearSearch = () => {
+    setSelected(null);
+    setQuery('');
+    setSuggestions([]);
+  };
 
   return (
     <View style={styles.container}>
@@ -77,23 +120,48 @@ export function BrowseScreen() {
         </Pressable>
       </View>
 
-      {/* Trust filter — verified-first is the whole product. */}
+      {/* Landmark-first search */}
+      <View style={styles.searchWrap}>
+        <TextInput
+          style={styles.search}
+          value={query}
+          onChangeText={onQueryChange}
+          placeholder="Search a landmark — “Gwarinpa”, “behind Shoprite Jabi”"
+          placeholderTextColor={colors.textMuted}
+          autoCorrect={false}
+        />
+        {query.length > 0 && (
+          <Pressable onPress={clearSearch} hitSlop={10} style={styles.clear}>
+            <Text style={styles.clearText}>✕</Text>
+          </Pressable>
+        )}
+        {suggestions.length > 0 && (
+          <View style={styles.suggestBox}>
+            {suggestions.map((s) => (
+              <Pressable key={s.id} style={styles.suggestRow} onPress={() => pickSuggestion(s)}>
+                <Text style={styles.suggestName}>{s.name}</Text>
+                <Text style={styles.suggestMeta}>{s.kind} · {s.city}</Text>
+              </Pressable>
+            ))}
+          </View>
+        )}
+      </View>
+
       <View style={styles.filterRow}>
         <Text style={styles.filterLabel}>Verified only</Text>
-        <Switch
-          value={verifiedOnly}
-          onValueChange={setVerifiedOnly}
-          trackColor={{ true: colors.verified }}
-        />
+        <Switch value={verifiedOnly} onValueChange={setVerifiedOnly} trackColor={{ true: colors.verified }} />
+        {selected ? (
+          <Pressable style={styles.nearChip} onPress={clearSearch}>
+            <Text style={styles.nearChipText}>near {selected.name} ✕</Text>
+          </Pressable>
+        ) : null}
         <Text style={styles.count}>
           {listings.length} listing{listings.length === 1 ? '' : 's'}
         </Text>
       </View>
 
       {loading ? (
-        <View style={styles.center}>
-          <ActivityIndicator color={colors.brand} />
-        </View>
+        <View style={styles.center}><ActivityIndicator color={colors.brand} /></View>
       ) : error && listings.length === 0 ? (
         <View style={styles.center}>
           <Text style={styles.errorTitle}>Can't reach the API</Text>
@@ -102,16 +170,20 @@ export function BrowseScreen() {
             Is the backend running, and is EXPO_PUBLIC_API_URL pointing at it?
           </Text>
         </View>
+      ) : listings.length === 0 ? (
+        <View style={styles.center}>
+          <Text style={styles.errorTitle}>No listings here yet</Text>
+          <Text style={styles.errorHint}>
+            {selected ? `Nothing near ${selected.name}. Try a wider area.` : 'Be the first to list.'}
+          </Text>
+        </View>
       ) : (
         <FlatList
           data={listings}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
           renderItem={({ item }) => (
-            <ListingCard
-              listing={item}
-              onPress={() => nav.navigate({ name: 'detail', id: item.id })}
-            />
+            <ListingCard listing={item} onPress={() => nav.navigate({ name: 'detail', id: item.id })} />
           )}
           ItemSeparatorComponent={() => <View style={{ height: 16 }} />}
           refreshControl={<RefreshControl refreshing={false} onRefresh={load} />}
@@ -134,13 +206,37 @@ const styles = StyleSheet.create({
   statusRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 },
   dot: { width: 8, height: 8, borderRadius: 4 },
   statusText: { fontSize: 12, color: colors.textMuted },
-  listBtn: {
-    backgroundColor: colors.brand,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 999,
-  },
+  listBtn: { backgroundColor: colors.brand, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 999 },
   listBtnText: { color: '#fff', fontWeight: '700' },
+  searchWrap: { paddingHorizontal: 16, paddingTop: 4, zIndex: 10 },
+  search: {
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    fontSize: 14,
+    color: colors.text,
+  },
+  clear: { position: 'absolute', right: 28, top: 15 },
+  clearText: { color: colors.textMuted, fontSize: 16 },
+  suggestBox: {
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    marginTop: 6,
+    overflow: 'hidden',
+  },
+  suggestRow: {
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+  },
+  suggestName: { fontSize: 15, fontWeight: '600', color: colors.text },
+  suggestMeta: { fontSize: 12, color: colors.textMuted, marginTop: 2 },
   filterRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -149,6 +245,13 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   filterLabel: { fontSize: 14, fontWeight: '600', color: colors.text },
+  nearChip: {
+    backgroundColor: colors.chipBg,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  nearChipText: { fontSize: 12, fontWeight: '600', color: colors.brandTint },
   count: { marginLeft: 'auto', fontSize: 12, color: colors.textMuted },
   list: { padding: 16, paddingTop: 8 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },

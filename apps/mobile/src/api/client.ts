@@ -1,6 +1,7 @@
 import { API_URL } from '../config';
 import type {
   CreateListingInput,
+  GazetteerSuggestion,
   ListingCard,
   ListingDetail,
 } from '../types';
@@ -48,6 +49,27 @@ export const api = {
   },
 
   listing: (id: string) => req<ListingDetail>(`/listings/${id}`),
+
+  // Landmark-first search.
+  searchLandmarks: (q: string, city?: string) => {
+    const p = new URLSearchParams({ q });
+    if (city) p.set('city', city);
+    return req<GazetteerSuggestion[]>(`/search/landmarks?${p.toString()}`);
+  },
+
+  searchListings: (params: {
+    gazetteerId?: string;
+    type?: string;
+    verifiedOnly?: boolean;
+    radiusM?: number;
+  }) => {
+    const p = new URLSearchParams();
+    if (params.gazetteerId) p.set('gazetteerId', params.gazetteerId);
+    if (params.type) p.set('type', params.type);
+    if (params.verifiedOnly) p.set('verified', 'true');
+    if (params.radiusM) p.set('radiusM', String(params.radiusM));
+    return req<ListingCard[]>(`/search/listings?${p.toString()}`);
+  },
 
   createListing: (input: CreateListingInput) =>
     req<ListingDetail>('/listings', {

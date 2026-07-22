@@ -12,7 +12,7 @@ the umlaut in product copy.
 We are in **Phase 1 (Trust MVP)** — no money moves through the app by design.
 Build order is one module at a time; see `docs/Uno-Build-Brief.md`.
 
-**Status: Steps 1–2 complete.** Next up: Step 3 (Landmark search).
+**Status: Steps 1–3 complete.** Next up: Step 4 (Trust Panel).
 
 ## Build order (don't build ahead)
 
@@ -22,7 +22,11 @@ Build order is one module at a time; see `docs/Uno-Build-Brief.md`.
    multi-size WebP/AVIF derivatives + perceptual hash, itemised fee ledger
    required at creation, seed catalogue. Canonical vocabulary enforced
    (see `apps/api/src/listings/listing.enums.ts`).
-3. ⬜ Landmark search — Typesense synced from Postgres; typo-tolerant.
+3. ✅ Landmark search — `gazetteer_entry` (estates/districts/landmarks + aliases
+   + PostGIS points), `SearchProvider` adapter with Typesense (prod, locked) and
+   pg_trgm (dev/demo) drivers, typo-tolerant autocomplete (`/search/landmarks`),
+   radius listing search verified-first (`/search/listings`), listing↔gazetteer
+   FK + geocoding. Set `SEARCH_DRIVER=typesense` in prod.
 4. ⬜ Trust Panel — verification tiers, title-type risk labeling, badges.
 5. ⬜ Fee ledger — itemized charges; Total Cost of Acquisition calculator.
 6. ⬜ Chat + WhatsApp.

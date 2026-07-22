@@ -11,6 +11,10 @@ import {
   TitleType,
   VerificationTier,
 } from '../listings/listing.enums';
+import {
+  GazetteerEntry,
+  GazetteerKind,
+} from '../gazetteer/gazetteer-entry.entity';
 import { LocalDiskStorage } from '../storage/local-disk.storage';
 import { ImagePipelineService } from '../media/image-pipeline.service';
 
@@ -56,6 +60,38 @@ async function makeImage(title: string, subtitle: string, i: number): Promise<Bu
   </svg>`;
   return sharp(Buffer.from(svg)).jpeg({ quality: 82 }).toBuffer();
 }
+
+// Hand-curated gazetteer for Abuja + Lagos. Aliases carry the common
+// misspellings ("Gwarinpa" / "Gwarimpa") that make typo-tolerant search matter.
+interface GazSpec {
+  name: string;
+  aliases: string[];
+  kind: GazetteerKind;
+  city: string;
+  lat: number;
+  lng: number;
+}
+
+const GAZETTEER: GazSpec[] = [
+  // Abuja
+  { name: 'Jabi', aliases: ['Jabhi'], kind: GazetteerKind.DISTRICT, city: 'Abuja', lat: 9.0765, lng: 7.4165 },
+  { name: 'Gwarinpa', aliases: ['Gwarimpa', 'Gwarinpa Estate'], kind: GazetteerKind.ESTATE, city: 'Abuja', lat: 9.11, lng: 7.40 },
+  { name: 'Wuse 2', aliases: ['Wuse II', 'Wuse Two'], kind: GazetteerKind.DISTRICT, city: 'Abuja', lat: 9.079, lng: 7.485 },
+  { name: 'Maitama', aliases: ['Maytama'], kind: GazetteerKind.DISTRICT, city: 'Abuja', lat: 9.087, lng: 7.49 },
+  { name: 'Asokoro', aliases: ['Asoroko'], kind: GazetteerKind.DISTRICT, city: 'Abuja', lat: 9.04, lng: 7.53 },
+  { name: 'Garki', aliases: [], kind: GazetteerKind.DISTRICT, city: 'Abuja', lat: 9.03, lng: 7.49 },
+  { name: 'Kaura', aliases: ['Kaura District'], kind: GazetteerKind.DISTRICT, city: 'Abuja', lat: 8.99, lng: 7.47 },
+  { name: 'Lugbe', aliases: ['Lugbe District'], kind: GazetteerKind.DISTRICT, city: 'Abuja', lat: 8.98, lng: 7.38 },
+  { name: 'Shoprite Jabi', aliases: ['Jabi Lake Mall'], kind: GazetteerKind.LANDMARK, city: 'Abuja', lat: 9.077, lng: 7.417 },
+  // Lagos
+  { name: 'Lekki Phase 1', aliases: ['Lekki Phase One', 'Lekki Ph1'], kind: GazetteerKind.DISTRICT, city: 'Lagos', lat: 6.44, lng: 3.47 },
+  { name: 'Ikota', aliases: ['Ikota GRA'], kind: GazetteerKind.ESTATE, city: 'Lagos', lat: 6.45, lng: 3.55 },
+  { name: 'Victoria Island', aliases: ['VI'], kind: GazetteerKind.DISTRICT, city: 'Lagos', lat: 6.43, lng: 3.42 },
+  { name: 'Ikeja', aliases: ['Ikeja GRA'], kind: GazetteerKind.DISTRICT, city: 'Lagos', lat: 6.60, lng: 3.35 },
+  { name: 'Yaba', aliases: ['Yabba'], kind: GazetteerKind.DISTRICT, city: 'Lagos', lat: 6.51, lng: 3.37 },
+  { name: 'Ajah', aliases: ['Aja'], kind: GazetteerKind.DISTRICT, city: 'Lagos', lat: 6.47, lng: 3.57 },
+  { name: 'Surulere', aliases: ['Surelere'], kind: GazetteerKind.DISTRICT, city: 'Lagos', lat: 6.49, lng: 3.35 },
+];
 
 interface Spec {
   type: ListingType;
@@ -200,12 +236,34 @@ async function run() {
   const listingRepo = dataSource.getRepository(Listing);
   const mediaRepo = dataSource.getRepository(ListingMedia);
   const feeRepo = dataSource.getRepository(FeeLine);
+  const gazRepo = dataSource.getRepository(GazetteerEntry);
 
   if (reset) {
     await feeRepo.createQueryBuilder().delete().execute();
     await mediaRepo.createQueryBuilder().delete().execute();
     await listingRepo.createQueryBuilder().delete().execute();
-    console.log('• cleared existing listings');
+    await gazRepo.createQueryBuilder().delete().execute();
+    console.log('• cleared existing listings + gazetteer');
+  }
+
+  // Seed the gazetteer and index by name for linking listings.
+  const gazByName = new Map<string, string>();
+  if ((await gazRepo.count()) === 0) {
+    for (const g of GAZETTEER) {
+      const saved = await gazRepo.save(
+        gazRepo.create({
+          name: g.name,
+          aliases: g.aliases,
+          kind: g.kind,
+          city: g.city,
+          geom: { type: 'Point', coordinates: [g.lng, g.lat] },
+        }),
+      );
+      gazByName.set(g.name, saved.id);
+    }
+    console.log(`• seeded ${GAZETTEER.length} gazetteer entries`);
+  } else {
+    for (const g of await gazRepo.find()) gazByName.set(g.name, g.id);
   }
 
   const existing = await listingRepo.count();
@@ -223,6 +281,7 @@ async function run() {
         title: s.title,
         description: s.description,
         agentName: s.agentName,
+        gazetteerId: gazByName.get(s.area) ?? null,
         landmark: s.landmark,
         area: s.area,
         city: s.city,

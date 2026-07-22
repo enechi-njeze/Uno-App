@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Listing } from './listing.entity';
 import { FeeLine } from './fee-line.entity';
+import { GazetteerEntry } from '../gazetteer/gazetteer-entry.entity';
 import {
   ListingStatus,
   ListingType,
@@ -18,6 +19,26 @@ export interface BrowseFilters {
   verifiedOnly?: boolean; // Document-Verified and above
 }
 
+export interface NearFilters extends BrowseFilters {
+  gazetteerId?: string;
+  lat?: number;
+  lng?: number;
+  radiusM?: number;
+}
+
+// Verified-first ordering, reused across browse and search.
+const TIER_ORDER = `CASE l."verificationTier"
+   WHEN 'escrow-enabled' THEN 0
+   WHEN 'inspection-certified' THEN 1
+   WHEN 'registry-verified' THEN 2
+   WHEN 'document-verified' THEN 3
+   ELSE 4 END`;
+
+interface GeoPoint {
+  type: 'Point';
+  coordinates: [number, number];
+}
+
 @Injectable()
 export class ListingsService {
   constructor(
@@ -25,24 +46,38 @@ export class ListingsService {
     private readonly listings: Repository<Listing>,
     @InjectRepository(FeeLine)
     private readonly feeLines: Repository<FeeLine>,
+    @InjectRepository(GazetteerEntry)
+    private readonly gazetteers: Repository<GazetteerEntry>,
     @Inject(STORAGE_PROVIDER) private readonly storage: StorageProvider,
   ) {}
 
   async create(dto: CreateListingDto) {
+    // If the listing is tied to a gazetteer entry and no explicit point was
+    // given, inherit the landmark's location so it's searchable immediately.
+    let geom: object | null =
+      dto.lat != null && dto.lng != null
+        ? { type: 'Point', coordinates: [dto.lng, dto.lat] }
+        : null;
+    let city = dto.city ?? 'Abuja';
+    if (dto.gazetteerId) {
+      const g = await this.gazetteers.findOne({ where: { id: dto.gazetteerId } });
+      if (g) {
+        city = dto.city ?? g.city;
+        if (!geom && g.geom) geom = g.geom;
+      }
+    }
+
     const listing = this.listings.create({
       type: dto.type,
       status: ListingStatus.PUBLISHED,
       title: dto.title,
       description: dto.description ?? null,
       agentName: dto.agentName ?? null,
+      gazetteerId: dto.gazetteerId ?? null,
       landmark: dto.landmark,
       area: dto.area,
-      city: dto.city ?? 'Abuja',
-      // PostGIS point as GeoJSON (lng, lat) — nullable until geocoded.
-      geom:
-        dto.lat != null && dto.lng != null
-          ? { type: 'Point', coordinates: [dto.lng, dto.lat] }
-          : null,
+      city,
+      geom,
       priceNaira: dto.priceNaira,
       quoteBasis: dto.quoteBasis,
       upfrontYears: dto.upfrontYears ?? null,
@@ -87,15 +122,58 @@ export class ListingsService {
     }
 
     // Verified-first, always. Rank tiers, then newest.
-    qb.orderBy(
-      `CASE l."verificationTier"
-         WHEN 'escrow-enabled' THEN 0
-         WHEN 'inspection-certified' THEN 1
-         WHEN 'registry-verified' THEN 2
-         WHEN 'document-verified' THEN 3
-         ELSE 4 END`,
-      'ASC',
-    ).addOrderBy('l.createdAt', 'DESC');
+    qb.orderBy(TIER_ORDER, 'ASC').addOrderBy('l.createdAt', 'DESC');
+
+    const rows = await qb.getMany();
+    return rows.map((l) => serializeCard(l, this.storage));
+  }
+
+  // Landmark search: results near a chosen gazetteer entry (or explicit point),
+  // within a radius, still verified-first, then nearest. Address-second by
+  // design — the entry point is a landmark, not a street.
+  async searchNear(params: NearFilters) {
+    let center: { lat: number; lng: number } | null = null;
+    if (params.gazetteerId) {
+      const g = await this.gazetteers.findOne({
+        where: { id: params.gazetteerId },
+      });
+      const geom = g?.geom as GeoPoint | null;
+      if (geom?.type === 'Point') {
+        center = { lng: geom.coordinates[0], lat: geom.coordinates[1] };
+      }
+    } else if (params.lat != null && params.lng != null) {
+      center = { lat: params.lat, lng: params.lng };
+    }
+
+    const qb = this.listings
+      .createQueryBuilder('l')
+      .leftJoinAndSelect('l.media', 'media')
+      .where('l.status = :status', { status: ListingStatus.PUBLISHED });
+
+    if (params.type) qb.andWhere('l.type = :type', { type: params.type });
+    if (params.city) qb.andWhere('l.city = :city', { city: params.city });
+    if (params.verifiedOnly) {
+      qb.andWhere('l."verificationTier" <> :listed', {
+        listed: VerificationTier.LISTED,
+      });
+    }
+
+    if (center) {
+      const radius = params.radiusM ?? 5000;
+      qb.andWhere(
+        `l.geom IS NOT NULL AND ST_DWithin(
+           l.geom::geography,
+           ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)::geography,
+           :radius)`,
+        { lng: center.lng, lat: center.lat, radius },
+      );
+      qb.orderBy(TIER_ORDER, 'ASC').addOrderBy(
+        `ST_Distance(l.geom::geography, ST_SetSRID(ST_MakePoint(${center.lng}, ${center.lat}), 4326)::geography)`,
+        'ASC',
+      );
+    } else {
+      qb.orderBy(TIER_ORDER, 'ASC').addOrderBy('l.createdAt', 'DESC');
+    }
 
     const rows = await qb.getMany();
     return rows.map((l) => serializeCard(l, this.storage));

@@ -9,6 +9,7 @@ import {
   IsNumberString,
   IsOptional,
   IsString,
+  IsUUID,
   Min,
   ValidateNested,
 } from 'class-validator';
@@ -62,7 +63,12 @@ export class CreateListingDto {
   @IsString()
   agentName?: string;
 
-  // Location — landmark-first. Real gazetteer FK arrives in Step 3.
+  // Location — landmark-first. Optionally tie to a gazetteer entry (Step 3);
+  // the listing then inherits that landmark's point for radius search.
+  @IsOptional()
+  @IsUUID()
+  gazetteerId?: string;
+
   @IsString()
   @IsNotEmpty()
   landmark!: string;

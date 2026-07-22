@@ -28,7 +28,8 @@
     "rxjs": "^7.8.1",
     "sharp": "^0.33.5",
     "sharp-phash": "^2.2.0",
-    "typeorm": "^0.3.20"
+    "typeorm": "^0.3.20",
+    "typesense": "^1.8.2"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.4.9",

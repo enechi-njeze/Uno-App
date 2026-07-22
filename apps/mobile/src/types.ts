@@ -79,6 +79,14 @@ export interface ListingDetail extends ListingCard {
   createdAt: string;
 }
 
+export interface GazetteerSuggestion {
+  id: string;
+  name: string;
+  kind: string;
+  city: string;
+  score: number;
+}
+
 export interface CreateFeeLineInput {
   kind: string;
   label?: string;
