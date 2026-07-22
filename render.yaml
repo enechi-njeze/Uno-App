@@ -21,6 +21,9 @@ services:
     buildCommand: npm ci && npm run build
     startCommand: node dist/main.js
     healthCheckPath: /api/v1/health
+    # Backend served at the api subdomain of the live domain.
+    domains:
+      - api.myunoapp.com
     envVars:
       - key: DATABASE_URL
         fromDatabase:
@@ -30,8 +33,9 @@ services:
         value: production
       - key: PORT
         value: "3000"
+      # Locked to the live web origins now that the app has its own domain.
       - key: CORS_ORIGINS
-        value: "*"
+        value: "https://myunoapp.com,https://www.myunoapp.com"
       - key: SEARCH_DRIVER
         value: postgres
       - key: SEED_ON_BOOT
@@ -45,10 +49,14 @@ services:
     rootDir: apps/mobile
     buildCommand: npm ci && npm run build:web
     staticPublishPath: dist
+    # The app's public home: apex + www.
+    domains:
+      - myunoapp.com
+      - www.myunoapp.com
     envVars:
-      # Set to the deployed API base, e.g. https://uno-api.onrender.com/api/v1
+      # Web build talks to the API on its own subdomain.
       - key: EXPO_PUBLIC_API_URL
-        sync: false
+        value: "https://api.myunoapp.com/api/v1"
     routes:
       - type: rewrite
         source: /*
