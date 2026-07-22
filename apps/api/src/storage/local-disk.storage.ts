@@ -17,9 +17,13 @@ export class LocalDiskStorage implements StorageProvider {
   constructor(private readonly config: ConfigService) {
     this.baseDir =
       this.config.get<string>('MEDIA_DIR') ?? join(process.cwd(), '.media');
+    // Media URLs must point at wherever the API is actually reachable. On
+    // Render, RENDER_EXTERNAL_URL is injected automatically, so the deployed
+    // instance builds correct absolute URLs with no manual config.
+    const renderUrl = process.env.RENDER_EXTERNAL_URL;
     this.publicBase =
       this.config.get<string>('PUBLIC_BASE_URL') ??
-      'http://localhost:3000/api/v1';
+      (renderUrl ? `${renderUrl}/api/v1` : 'http://localhost:3000/api/v1');
   }
 
   private pathFor(key: string): string {

@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import sharp from 'sharp';
+import { DataSource } from 'typeorm';
 import dataSource from './data-source';
 import { Listing } from '../listings/listing.entity';
 import { ListingMedia } from '../listings/listing-media.entity';
@@ -228,15 +229,21 @@ const SPECS: Spec[] = [
   },
 ];
 
-async function run() {
-  const reset = process.argv.includes('--reset');
-  await dataSource.initialize();
-  await dataSource.runMigrations();
+// Reusable seeder. Works on any initialised DataSource — the CLI wrapper below
+// and the optional seed-on-boot hook (SEED_ON_BOOT=true) both call it. Does not
+// destroy the connection; the caller owns its lifecycle.
+export async function runSeed(
+  ds: DataSource,
+  opts: { reset?: boolean } = {},
+): Promise<void> {
+  const reset = !!opts.reset;
+  if (!ds.isInitialized) await ds.initialize();
+  await ds.runMigrations();
 
-  const listingRepo = dataSource.getRepository(Listing);
-  const mediaRepo = dataSource.getRepository(ListingMedia);
-  const feeRepo = dataSource.getRepository(FeeLine);
-  const gazRepo = dataSource.getRepository(GazetteerEntry);
+  const listingRepo = ds.getRepository(Listing);
+  const mediaRepo = ds.getRepository(ListingMedia);
+  const feeRepo = ds.getRepository(FeeLine);
+  const gazRepo = ds.getRepository(GazetteerEntry);
 
   if (reset) {
     await feeRepo.createQueryBuilder().delete().execute();
@@ -269,7 +276,6 @@ async function run() {
   const existing = await listingRepo.count();
   if (existing > 0 && !reset) {
     console.log(`• ${existing} listings already present — skipping (use --reset to reseed)`);
-    await dataSource.destroy();
     return;
   }
 
@@ -334,10 +340,15 @@ async function run() {
   }
 
   console.log(`Done. ${SPECS.length} listings seeded.`);
-  await dataSource.destroy();
 }
 
-run().catch((e) => {
-  console.error(e);
-  process.exit(1);
-});
+// CLI entrypoint: `npm run seed` / `npm run seed:reset`.
+if (require.main === module) {
+  const reset = process.argv.includes('--reset');
+  runSeed(dataSource, { reset })
+    .then(() => dataSource.destroy())
+    .catch((e) => {
+      console.error(e);
+      process.exit(1);
+    });
+}

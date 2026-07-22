@@ -20,6 +20,20 @@ async function bootstrap() {
   const port = config.get<number>('PORT') ?? 3000;
   await app.listen(port, '0.0.0.0');
   logger.log(`Unö API listening on http://0.0.0.0:${port}/api/v1`);
+
+  // Optional: populate a fresh deployment with the demo catalogue on first
+  // boot (idempotent — skips if listings already exist). Enable with
+  // SEED_ON_BOOT=true. Runs after listen so health checks pass immediately.
+  if (config.get<string>('SEED_ON_BOOT') === 'true') {
+    try {
+      const { DataSource } = await import('typeorm');
+      const { runSeed } = await import('./database/seed');
+      await runSeed(app.get(DataSource), { reset: false });
+      logger.log('SEED_ON_BOOT: demo catalogue ready');
+    } catch (e) {
+      logger.warn(`SEED_ON_BOOT failed: ${(e as Error).message}`);
+    }
+  }
 }
 
 bootstrap();
