@@ -13,6 +13,7 @@ import {
 import { api } from '../api/client';
 import type { GazetteerSuggestion, ListingCard as Card } from '../types';
 import { ListingCard } from '../components/ListingCard';
+import { Logo } from '../components/Logo';
 import { useNav } from '../navigation';
 import { colors, radius } from '../theme';
 
@@ -91,7 +92,7 @@ export function BrowseScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.brand}>Unö</Text>
+          <Logo height={30} />
           <View style={styles.statusRow}>
             <View
               style={[

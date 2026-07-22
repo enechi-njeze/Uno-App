@@ -72,6 +72,23 @@ cd apps/mobile && npm install && npm run start
 A `SessionStart` hook (`.claude/settings.json` → `scripts/session-setup.sh`)
 installs both apps' deps automatically when a web session starts.
 
+## Brand (canonical — do not deviate)
+
+The official logo is the **Unö wordmark** with the two umlaut dots over the **ö**
+in red. It is locked. It **must** be used on the mobile app and the website —
+everywhere the product is branded.
+
+- Assets live in `apps/mobile/assets/brand/` (SVG sources + PNG sizes; see the
+  README there). App icon + splash are wired via `app.json`; the in-app header
+  uses `apps/mobile/src/components/Logo.tsx`.
+- **Never re-typeset "Unö" as plain text** where the logo belongs — render the
+  brand asset so the red dots and exact colours are always right.
+- Colours are locked: Unö Green `#0B3D2E`, Umlaut Red `#D7263D` (dots only),
+  Off-white `#F5F6F5`, Ink `#111111`, White `#FFFFFF`.
+- When the website / landing page is built, it uses these same assets and
+  colours — no separate logo.
+- Keep the umlaut (**Unö**) in all product copy.
+
 ## Conventions that are NOT optional (from the brief)
 
 - **Naira, per annum.** Prices are ₦, quoted **per year**, never a US-style
