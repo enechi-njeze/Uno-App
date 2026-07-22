@@ -11,8 +11,9 @@ includes the browser-agent prompt.
   `uno-db` (Postgres/PostGIS), `uno-api` (NestJS), `uno-web` (Expo web static).
 - **Domain:** `myunoapp.com`, registered at Namecheap.
   - **Canonical home:** the **apex** `myunoapp.com` → `uno-web`.
-  - **`www`:** 301-redirects to the apex via a Namecheap **URL Redirect Record**
-    (not served by Render).
+  - **`www`:** Render auto-creates a `www.myunoapp.com` custom domain that
+    301-redirects to the apex (Render terminates TLS + handles the redirect);
+    in DNS it's a **CNAME** to the `uno-web` host.
   - **API:** `api.myunoapp.com` → `uno-api`.
 - **Config source of truth:** `render.yaml`. It already declares the custom
   domains, points the web build at `https://api.myunoapp.com/api/v1`
@@ -28,16 +29,16 @@ Redirect on `@` first. Then:
 |------|------|-------|-------|
 | A Record | `@` | `216.24.57.1` | Render's apex IP — always confirm against `uno-web` → Custom Domains |
 | CNAME Record | `api` | `‹uno-api host›.onrender.com` | Copy the exact target from `uno-api` → Custom Domains |
-| URL Redirect Record | `www` | `https://myunoapp.com` | Permanent (301), Unmasked |
+| CNAME Record | `www` | `‹uno-web host›.onrender.com` | Render's managed `www` domain 301-redirects to the apex |
 
 Render's **Settings → Custom Domains** panel on each service is the source of
 truth for the exact target values and any TXT verification record. Domains flip
 to **Verified** and auto-get SSL once DNS propagates (minutes to ~1 hr).
 
-> `www` HTTPS note: Namecheap auto-provisions SSL for URL Redirect records, but
-> `https://www` may briefly warn until it finishes. If it lingers, point `www`
-> at Render with a CNAME instead (add `www.myunoapp.com` back to `uno-web`'s
-> `domains:` in `render.yaml`).
+> `www` is handled by Render, not the registrar: when the apex domain is added,
+> Render automatically creates `www.myunoapp.com` as a redirect to it and issues
+> its TLS cert. Point `www` at the `uno-web` host with a CNAME — do **not** also
+> add a Namecheap URL Redirect on `www`; the two conflict on the same host.
 
 ## First deploy (only needed once)
 
@@ -84,9 +85,9 @@ PART B — Enter + save DNS in Namecheap:
 7. Namecheap → Domain List → myunoapp.com → Manage → Advanced DNS.
 8. Delete the default "CNAME @ parkingpage.namecheap.com" and any URL Redirect on @.
 9. Add, using the exact values from Part A:
-   - A Record            | @   | <apex IP, e.g. 216.24.57.1>          | Automatic
-   - CNAME Record        | api | <uno-api onrender target>            | Automatic
-   - URL Redirect Record | www | https://myunoapp.com | Permanent (301) | Unmasked
+   - A Record     | @   | <apex IP, e.g. 216.24.57.1>  | Automatic
+   - CNAME Record | api | <uno-api onrender target>    | Automatic
+   - CNAME Record | www | <uno-web onrender target>    | Automatic
    - Any TXT verification record Render showed in step 6.
 10. Click Save All Changes.
 

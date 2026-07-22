@@ -52,8 +52,9 @@ services:
     rootDir: apps/mobile
     buildCommand: npm ci && npm run build:web
     staticPublishPath: dist
-    # The app's canonical public home. www 301-redirects here at the
-    # registrar (Namecheap URL Redirect Record), so it isn't served here.
+    # Canonical public home (apex). Render auto-creates a www.myunoapp.com
+    # custom domain that 301-redirects to the apex (Render terminates TLS and
+    # handles the redirect), so in DNS www is just a CNAME to this service.
     domains:
       - myunoapp.com
     envVars:
