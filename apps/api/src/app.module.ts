@@ -3,7 +3,11 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { HealthController } from './health/health.controller';
 import { Listing } from './listings/listing.entity';
+import { ListingMedia } from './listings/listing-media.entity';
+import { FeeLine } from './listings/fee-line.entity';
 import { ListingsModule } from './listings/listings.module';
+import { MediaModule } from './media/media.module';
+import { StorageModule } from './storage/storage.module';
 
 @Module({
   imports: [
@@ -13,15 +17,19 @@ import { ListingsModule } from './listings/listings.module';
       useFactory: (config: ConfigService) => ({
         type: 'postgres',
         url: config.get<string>('DATABASE_URL'),
-        entities: [Listing],
-        // Skeleton only: auto-create tables from entities so `hello world`
-        // runs with zero migration setup. Step 2 (Listings) replaces this
-        // with real TypeORM migrations before the schema is anything to keep.
-        synchronize: true,
+        entities: [Listing, ListingMedia, FeeLine],
+        // Step 2 onward: real migrations, never synchronize (it silently drops
+        // columns). Pending migrations apply automatically on boot so the demo
+        // and a fresh clone come up with the right schema.
+        synchronize: false,
+        migrationsRun: true,
+        migrations: [__dirname + '/database/migrations/*.{js,ts}'],
         autoLoadEntities: true,
       }),
     }),
+    StorageModule,
     ListingsModule,
+    MediaModule,
   ],
   controllers: [HealthController],
 })

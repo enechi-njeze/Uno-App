@@ -1,13 +1,23 @@
 import React from 'react';
 import { SafeAreaView, StatusBar, StyleSheet } from 'react-native';
-import { HomeScreen } from './src/screens/HomeScreen';
+import { NavHost, Route } from './src/navigation';
+import { BrowseScreen } from './src/screens/BrowseScreen';
+import { ListingDetailScreen } from './src/screens/ListingDetailScreen';
+import { CreateListingScreen } from './src/screens/CreateListingScreen';
 import { colors } from './src/theme';
 
 export default function App() {
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.bg} />
-      <HomeScreen />
+      <NavHost
+        screens={{
+          browse: () => <BrowseScreen />,
+          detail: (r: Route) =>
+            r.name === 'detail' ? <ListingDetailScreen id={r.id} /> : <BrowseScreen />,
+          create: () => <CreateListingScreen />,
+        }}
+      />
     </SafeAreaView>
   );
 }

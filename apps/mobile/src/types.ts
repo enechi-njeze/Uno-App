@@ -1,32 +1,108 @@
-// Mirrors the API's Listing shape (apps/api/src/listings/listing.entity.ts).
-// In a later step this can be generated/shared, but for the skeleton a
-// hand-kept copy keeps the two apps independent.
+// Mirrors the API response shapes. The fixed Unö vocabulary is shared verbatim.
 
-export type VerificationTier = 'unverified' | 'basic' | 'verified' | 'premium';
+export type VerificationTier =
+  | 'listed'
+  | 'document-verified'
+  | 'registry-verified'
+  | 'inspection-certified'
+  | 'escrow-enabled';
 
 export type TitleType =
-  | 'c_of_o'
-  | 'governors_consent'
-  | 'deed_of_assignment'
-  | 'excision'
-  | 'gazette'
-  | 'none';
+  | 'c-of-o'
+  | 'governors-consent'
+  | 'deed-of-assignment'
+  | 'letter-of-allocation';
 
-export type ListingType = 'rent' | 'sale';
+export type ListingType = 'buy' | 'rent' | 'short-let' | 'land' | 'off-plan';
 
-export interface Listing {
+export type QuoteBasis = 'per_annum' | 'total';
+
+export interface MediaSize {
+  width: number;
+  webp: string;
+  avif: string;
+}
+
+export interface Media {
   id: string;
+  ordinal: number;
+  captureDate: string | null;
+  sizes: MediaSize[];
+  hero: MediaSize | null;
+}
+
+export interface FeeLine {
+  id: string;
+  kind: string;
+  label: string | null;
+  amountNaira: string;
+  isPercentage: boolean;
+  percentageBps: number | null;
+  refundable: boolean;
+  disclosedAt: string;
+}
+
+export interface ListingCard {
+  id: string;
+  type: ListingType;
   title: string;
-  propertyType: string;
-  listingType: ListingType;
-  priceNaira: string | null;
+  priceNaira: string;
+  quoteBasis: QuoteBasis;
+  upfrontYears: number | null;
   bedrooms: number | null;
   bathrooms: number | null;
+  plotSizeSqm: string | null;
+  plotCount: string | null;
   landmark: string;
   area: string;
   city: string;
-  coverImageUrl: string | null;
+  agentName: string | null;
   verificationTier: VerificationTier;
   titleType: TitleType;
+  hero: Media | null;
+}
+
+export interface ListingDetail extends ListingCard {
+  status: string;
+  description: string | null;
+  location: { lat: number; lng: number } | null;
+  internalAreaSqm: string | null;
+  yearBuilt: number | null;
+  condition: string | null;
+  verifyingFirmName: string | null;
+  verifyingSolicitorName: string | null;
+  verificationCheckedAt: string | null;
+  verificationScopeStatement: string | null;
+  acquisitionZoneResult: string;
+  media: Media[];
+  feeLines: FeeLine[];
   createdAt: string;
+}
+
+export interface CreateFeeLineInput {
+  kind: string;
+  label?: string;
+  amountNaira: string;
+  isPercentage?: boolean;
+  percentageBps?: number;
+  refundable?: boolean;
+}
+
+export interface CreateListingInput {
+  type: ListingType;
+  title: string;
+  description?: string;
+  agentName?: string;
+  landmark: string;
+  area: string;
+  city?: string;
+  lat?: number;
+  lng?: number;
+  priceNaira: string;
+  quoteBasis: QuoteBasis;
+  upfrontYears?: number;
+  bedrooms?: number;
+  bathrooms?: number;
+  titleType: TitleType;
+  feeLines: CreateFeeLineInput[];
 }

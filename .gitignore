@@ -35,3 +35,6 @@ yarn-error.*
 
 # Local Postgres data (dev)
 pgdata/
+
+# Local media storage (dev)
+apps/api/.media/

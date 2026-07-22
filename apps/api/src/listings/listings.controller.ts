@@ -1,30 +1,42 @@
 import {
+  Body,
   Controller,
   Get,
-  NotFoundException,
   Param,
   ParseUUIDPipe,
+  Post,
+  Query,
 } from '@nestjs/common';
 import { ListingsService } from './listings.service';
-import { Listing } from './listing.entity';
+import { CreateListingDto } from './dto/create-listing.dto';
+import { ListingType } from './listing.enums';
 
 @Controller('listings')
 export class ListingsController {
-  constructor(private readonly listingsService: ListingsService) {}
+  constructor(private readonly listings: ListingsService) {}
 
+  @Post()
+  create(@Body() dto: CreateListingDto) {
+    return this.listings.create(dto);
+  }
+
+  // Browse — verified-first. Basic filters here; the full trust-filter row and
+  // landmark search arrive in Step 3.
   @Get()
-  findAll(): Promise<Listing[]> {
-    return this.listingsService.findAll();
+  browse(
+    @Query('type') type?: ListingType,
+    @Query('city') city?: string,
+    @Query('verified') verified?: string,
+  ) {
+    return this.listings.browse({
+      type,
+      city,
+      verifiedOnly: verified === 'true' || verified === '1',
+    });
   }
 
   @Get(':id')
-  async findOne(
-    @Param('id', new ParseUUIDPipe()) id: string,
-  ): Promise<Listing> {
-    const listing = await this.listingsService.findOne(id);
-    if (!listing) {
-      throw new NotFoundException(`Listing ${id} not found`);
-    }
-    return listing;
+  findOne(@Param('id', new ParseUUIDPipe()) id: string) {
+    return this.listings.findOne(id);
   }
 }

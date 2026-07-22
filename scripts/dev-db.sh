@@ -20,6 +20,17 @@ if [ -z "${PGBIN}" ]; then
   exit 1
 fi
 export PATH="${PGBIN}:${PATH}"
+PGVER="$(basename "$(dirname "${PGBIN}")")"
+
+# PostGIS is required from Step 2 (geospatial columns). Install it if the
+# extension control file isn't present. Needs apt (root); harmless if already there.
+if [ ! -f "/usr/share/postgresql/${PGVER}/extension/postgis.control" ]; then
+  echo "• installing PostGIS (postgresql-${PGVER}-postgis-3)…"
+  apt-get update -qq >/dev/null 2>&1 || true
+  apt-get install -y "postgresql-${PGVER}-postgis-3" >/dev/null 2>&1 \
+    && echo "  PostGIS installed" \
+    || echo "  PostGIS install failed — geospatial features will not work until it's present"
+fi
 
 # Ensure the unprivileged owner exists (needs root; sessions run as root).
 if ! id "${PGUSER_NAME}" >/dev/null 2>&1; then
@@ -47,6 +58,12 @@ if ! psql -h /tmp -p "${PORT}" -U postgres -tAc \
   psql -h /tmp -p "${PORT}" -U postgres -c "CREATE DATABASE uno;" >/dev/null
   echo "• created database 'uno'"
 fi
+
+# Enable PostGIS in the uno database (idempotent).
+psql -h /tmp -p "${PORT}" -U postgres -d uno -c \
+  "CREATE EXTENSION IF NOT EXISTS postgis;" >/dev/null 2>&1 \
+  && echo "• PostGIS extension enabled" \
+  || echo "• PostGIS extension NOT enabled (package missing)"
 
 echo "Postgres ready:  postgresql://postgres@127.0.0.1:${PORT}/uno"
 echo "Set that as DATABASE_URL in apps/api/.env"

@@ -12,12 +12,16 @@ the umlaut in product copy.
 We are in **Phase 1 (Trust MVP)** — no money moves through the app by design.
 Build order is one module at a time; see `docs/Uno-Build-Brief.md`.
 
-**Status: Step 1 (skeleton) complete.** Next up: Step 2 (Listings).
+**Status: Steps 1–2 complete.** Next up: Step 3 (Landmark search).
 
 ## Build order (don't build ahead)
 
 1. ✅ Skeleton — RN + NestJS + Postgres, one listing card end-to-end.
-2. ⬜ Listings — data model, create/browse/detail, media upload + compression.
+2. ✅ Listings — `listing`/`listing_media`/`fee_line` model (TypeORM migrations,
+   PostGIS enabled), create/browse (verified-first)/detail, media upload with
+   multi-size WebP/AVIF derivatives + perceptual hash, itemised fee ledger
+   required at creation, seed catalogue. Canonical vocabulary enforced
+   (see `apps/api/src/listings/listing.enums.ts`).
 3. ⬜ Landmark search — Typesense synced from Postgres; typo-tolerant.
 4. ⬜ Trust Panel — verification tiers, title-type risk labeling, badges.
 5. ⬜ Fee ledger — itemized charges; Total Cost of Acquisition calculator.
