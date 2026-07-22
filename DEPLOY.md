@@ -4,6 +4,11 @@ This puts Unö online: a live **web link** anyone can open, backed by a real
 database — using the `render.yaml` blueprint in this repo. Everything is on
 **free tiers**. Nothing here needs code changes.
 
+> **Domain + repeatable procedure:** the locked-in go-live and custom-domain
+> wiring for `myunoapp.com` (DNS records, canonical apex, `api` subdomain, and a
+> reusable browser-agent prompt) lives in
+> [`docs/Go-Live-and-Domain-Runbook.md`](docs/Go-Live-and-Domain-Runbook.md).
+
 > Prerequisite: this repo must be on GitHub (it is, if you're reading this
 > there). Deploy platforms pull the code from GitHub.
 
