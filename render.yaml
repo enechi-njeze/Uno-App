@@ -49,10 +49,10 @@ services:
     rootDir: apps/mobile
     buildCommand: npm ci && npm run build:web
     staticPublishPath: dist
-    # The app's public home: apex + www.
+    # The app's canonical public home. www 301-redirects here at the
+    # registrar (Namecheap URL Redirect Record), so it isn't served here.
     domains:
       - myunoapp.com
-      - www.myunoapp.com
     envVars:
       # Web build talks to the API on its own subdomain.
       - key: EXPO_PUBLIC_API_URL
